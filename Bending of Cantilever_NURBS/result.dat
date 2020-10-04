@@ -1,0 +1,14 @@
+Bending of a cantilever loaded at the end
+degree of freedom 	         12
+degree of B-Spline           3
+
+Relative error in max. norm of displacement u	(%)	:		5.23127548224255889E-012  
+Relative error in max. norm of displacement v	(%)	:		4.73637982766701160E-012  
+
+Relative error in max. norm of stress s_11	(%)	:		4.29736246587708560E-012  
+Relative error in max. norm of stress s_22	(%)	:		1.10503606265410784E-011  
+
+Relative error in L2 norm of displacement u	(%)	:		4.78541510037475646E-012  
+Relative error in L2 norm of displacement v	(%)	:		4.53791577031969830E-012  
+
+Relative error in energy norm (%)	:		2.30210641317316282E-005

@@ -1,0 +1,737 @@
+MODULE GEOMETRY
+
+	USE KNOT_HANDLING
+	USE PATCH_MAPPING
+	USE NURBS
+
+! 	IMPLICIT INTEGER (I-N)
+! 	IMPLICIT REAL(8) (A-H,O-Z)
+
+CONTAINS
+
+SUBROUTINE GET_GEO()
+	
+	INTEGER :: I, J, II, JJ, K, KK
+
+!	SET GEOMETRIC(NURBS) KNOT INFO FOR NURBS MAP
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!  	GEO_KVEC(1) = GET_BASE_OPEN_KNOT_VECTOR(GEO_ORDER(1),GEO_NUMBS(1))
+!  	GEO_KVEC(2) = GET_BASE_OPEN_KNOT_VECTOR(GEO_ORDER(2),GEO_NUMBS(2))
+
+! 	DO J=1, GEO_EXTRA_KNOTS(1)
+! 		GEO_KVEC(1)%KNOTS(GEO_ORDER(1)+J) = 1.D0 - GEO_KNOT_INTERVAL(1)*(GEO_EXTRA_KNOTS(1) + 1 - J)
+! 	ENDDO
+! 	DO J=1, GEO_EXTRA_KNOTS(2)
+! 		GEO_KVEC(2)%KNOTS(GEO_ORDER(2)+J) = 0.D0 + GEO_KNOT_INTERVAL(2)*J
+! 	ENDDO
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+! UNIT CIRCLE
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! 	GEO_KVEC(1)%POLY_ORDER = 2
+! 	GEO_KVEC(2)%POLY_ORDER = 2
+! 
+! 	GEO_KVEC(1)%LENGTH = 5
+! 	GEO_KVEC(2)%LENGTH = 5
+! 
+! 	GEO_NUMBS(:) = (/GEO_KVEC(1)%LENGTH-GEO_KVEC(1)%POLY_ORDER,GEO_KVEC(2)%LENGTH-GEO_KVEC(2)%POLY_ORDER/)
+! 	GEO_KVEC(1)%KNOTS(0:GEO_KVEC(1)%LENGTH) = (/0.D0,0.D0,0.D0,1.D0,1.D0,1.D0/)
+! 	GEO_KVEC(2)%KNOTS(0:GEO_KVEC(2)%LENGTH) = (/0.D0,0.D0,0.D0,1.D0,1.D0,1.D0/)
+! 	
+! ! SET CONTROL POINTS AND WEIGTH
+! 	GEO_CTL%D=2
+! 	GEO_CTL%PTS(0,0,0) = POINT2D(1.D0,0.D0)
+! 	GEO_CTL%PTS(1,0,0) = POINT2D(1.D0,1.D0)
+! 	GEO_CTL%PTS(2,0,0) = POINT2D(0.D0,1.D0)
+! 	GEO_CTL%PTS(0,1,0) = POINT2D(1.D0,-1.D0)
+! 	GEO_CTL%PTS(1,1,0) = POINT2D(0.D0,0.D0)
+! 	GEO_CTL%PTS(2,1,0) = POINT2D(-1.D0,1.D0)
+! 	GEO_CTL%PTS(0,2,0) = POINT2D(0.D0,-1.D0)
+! 	GEO_CTL%PTS(1,2,0) = POINT2D(-1.D0,-1.D0)
+! 	GEO_CTL%PTS(2,2,0) = POINT2D(-1.D0,0.D0)
+! 	
+! 	GEO_CTL%WGTS(0,0,0) = 1.D0
+! 	GEO_CTL%WGTS(1,0,0) = 1.D0/DSQRT(2.D0)
+! 	GEO_CTL%WGTS(2,0,0) = 1.D0
+! 	GEO_CTL%WGTS(0,1,0) = 1.D0/DSQRT(2.D0)
+! 	GEO_CTL%WGTS(1,1,0) = 1.D0
+! 	GEO_CTL%WGTS(2,1,0) = 1.D0/DSQRT(2.D0)
+! 	GEO_CTL%WGTS(0,2,0) = 1.D0
+! 	GEO_CTL%WGTS(1,2,0) = 1.D0/DSQRT(2.D0)
+! 	GEO_CTL%WGTS(2,2,0) = 1.D0
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+! UNIT CIRCLE
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! 	GEO_KVEC(1)%POLY_ORDER = 2
+! 	GEO_KVEC(2)%POLY_ORDER = 2
+! 
+! 	GEO_KVEC(1)%LENGTH = 11
+! 	GEO_KVEC(2)%LENGTH = 5
+! 
+! 	GEO_NUMBS(:) = (/GEO_KVEC(1)%LENGTH-GEO_KVEC(1)%POLY_ORDER,GEO_KVEC(2)%LENGTH-GEO_KVEC(2)%POLY_ORDER/)
+! 	GEO_KVEC(1)%KNOTS(0:GEO_KVEC(1)%LENGTH) = (/0.D0, 0.D0, 0.D0, 0.25D0, 0.25D0, 0.5D0, 0.5D0, 0.75D0, 0.75D0, 1.D0, 1.D0, 1.D0/)
+! 	GEO_KVEC(2)%KNOTS(0:GEO_KVEC(2)%LENGTH) = (/0.D0, 0.D0, 0.D0, 1.D0, 1.D0, 1.D0/)
+! 	
+! ! SET CONTROL POINTS AND WEIGTH
+! 	GEO_CTL%D=2
+! 	
+! 	GEO_CTL%PTS(0,0,0) = POINT2D(-1.D0,0.D0)
+! 	GEO_CTL%PTS(1,0,0) = POINT2D(-1.D0,-(1.D0-DCOS(45.D0*DEGREE))/DSIN(45.D0*DEGREE))
+! 	GEO_CTL%PTS(2,0,0) = POINT2D(-DCOS(45.D0*DEGREE),-DSIN(45.D0*DEGREE))
+! 	GEO_CTL%PTS(3,0,0) = POINT2D((DSIN(45.D0*DEGREE)-1.D0)/DCOS(45.D0*DEGREE),-1.D0)
+! 	GEO_CTL%PTS(4,0,0) = POINT2D(0.D0,-1.D0)
+! 	GEO_CTL%PTS(5,0,0) = POINT2D(-(DSIN(45.D0*DEGREE)-1.D0)/DCOS(45.D0*DEGREE),-1.D0)
+! 	GEO_CTL%PTS(6,0,0) = POINT2D(DCOS(45.D0*DEGREE),-DSIN(45.D0*DEGREE))
+! 	GEO_CTL%PTS(7,0,0) = POINT2D(1.D0,-(1.D0-DCOS(45.D0*DEGREE))/DSIN(45.D0*DEGREE))
+! 	GEO_CTL%PTS(8,0,0) = POINT2D(1.D0,0.D0)
+! 	
+! 	GEO_CTL%PTS(0:8,1,0) = POINT2D(0.D0,0.D0)
+! 
+! 	GEO_CTL%PTS(0,2,0) = POINT2D(-1.D0,0.D0)
+! 	GEO_CTL%PTS(1,2,0) = POINT2D(-1.D0,(1.D0-DCOS(45.D0*DEGREE))/DSIN(45.D0*DEGREE))
+! 	GEO_CTL%PTS(2,2,0) = POINT2D(-DCOS(45.D0*DEGREE),DSIN(45.D0*DEGREE))
+! 	GEO_CTL%PTS(3,2,0) = POINT2D((DSIN(45.D0*DEGREE)-1.D0)/DCOS(45.D0*DEGREE),1.D0)
+! 	GEO_CTL%PTS(4,2,0) = POINT2D(0.D0,1.D0)
+! 	GEO_CTL%PTS(5,2,0) = POINT2D(-(DSIN(45.D0*DEGREE)-1.D0)/DCOS(45.D0*DEGREE),1.D0)
+! 	GEO_CTL%PTS(6,2,0) = POINT2D(DCOS(45.D0*DEGREE),DSIN(45.D0*DEGREE))
+! 	GEO_CTL%PTS(7,2,0) = POINT2D(1.D0,(1.D0-DCOS(45.D0*DEGREE))/DSIN(45.D0*DEGREE))
+! 	GEO_CTL%PTS(8,2,0) = POINT2D(1.D0,0.D0)
+! 	
+! 	DO I=0, 2
+! 		GEO_CTL%WGTS(0:8,I,0) = (/1.D0, DCOS(22.5D0*DEGREE), 1.D0, DCOS(22.5D0*DEGREE), 1.D0, DCOS(22.5D0*DEGREE), 1.D0, DCOS(22.5D0*DEGREE), 1.D0/)
+! 	ENDDO
+		
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+! HALF ANNULUS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! 	GEO_KVEC(1)%POLY_ORDER = 2
+! 	GEO_KVEC(2)%POLY_ORDER = 2
+! 
+! 	GEO_KVEC(1)%LENGTH = 6
+! 	GEO_KVEC(2)%LENGTH = 5
+! 
+! 	GEO_NUMBS(:) = (/GEO_KVEC(1)%LENGTH-GEO_KVEC(1)%POLY_ORDER,GEO_KVEC(2)%LENGTH-GEO_KVEC(2)%POLY_ORDER/)
+! 	GEO_KVEC(1)%KNOTS(0:GEO_KVEC(1)%LENGTH) = (/0.D0,0.D0,0.D0,0.5D0,1.D0,1.D0,1.D0/)
+! 	GEO_KVEC(2)%KNOTS(0:GEO_KVEC(2)%LENGTH) = (/0.D0,0.D0,0.D0,1.D0,1.D0,1.D0/)
+! 	
+! ! SET CONTROL POINTS AND WEIGTH
+! 	GEO_CTL%D=2
+! 	GEO_CTL%PTS(0,2,0) = POINT2D(-1.D0,0.D0)
+! 	GEO_CTL%PTS(1,2,0) = POINT2D(-1.D0,1.D0)
+! 	GEO_CTL%PTS(2,2,0) = POINT2D(1.D0,1.D0)
+! 	GEO_CTL%PTS(3,2,0) = POINT2D(1.D0,0.D0)
+! 	
+! 	DO I=0, 3
+! 		GEO_CTL%PTS(I,1,0) = 0.75D0*GEO_CTL%PTS(I,2,0)
+! 		GEO_CTL%PTS(I,0,0) = 0.5D0*GEO_CTL%PTS(I,2,0)
+! 	ENDDO
+! 	
+! 	DO I=0, 2
+! 		GEO_CTL%WGTS(0,I,0) = 1.D0
+! 		GEO_CTL%WGTS(1,I,0) = 0.5D0
+! 		GEO_CTL%WGTS(2,I,0) = 0.5D0
+! 		GEO_CTL%WGTS(3,I,0) = 1.D0
+! 	ENDDO
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+! HALF ANNULUS
+! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! 	GEO_KVEC(1)%POLY_ORDER = 2
+! 	GEO_KVEC(2)%POLY_ORDER = 2
+! 
+! 	GEO_KVEC(1)%LENGTH = 11
+! 	GEO_KVEC(2)%LENGTH = 5
+! 
+!  	GEO_NUMBS(:) = (/GEO_KVEC(1)%LENGTH-GEO_KVEC(1)%POLY_ORDER,GEO_KVEC(2)%LENGTH-GEO_KVEC(2)%POLY_ORDER/)
+! 	GEO_KVEC(1)%KNOTS(0:GEO_KVEC(1)%LENGTH) = (/0.D0, 0.D0, 0.D0, 0.25D0, 0.25D0, 0.5D0, 0.5D0, 0.75D0, 0.75D0, 1.D0, 1.D0, 1.D0/)
+! 	GEO_KVEC(2)%KNOTS(0:GEO_KVEC(2)%LENGTH) = (/0.D0, 0.D0, 0.D0, 1.D0, 1.D0, 1.D0/)
+! 	
+! ! SET CONTROL POINTS AND WEIGTH
+! 	GEO_CTL%D=2
+! 
+! 	GEO_CTL%PTS(0,2,0) = POINT2D(-1.D0,0.D0)
+! 	GEO_CTL%PTS(1,2,0) = POINT2D(-1.D0,(1.D0-DCOS(45.D0*DEGREE))/DSIN(45.D0*DEGREE))
+! 	GEO_CTL%PTS(2,2,0) = POINT2D(-DCOS(45.D0*DEGREE),DSIN(45.D0*DEGREE))
+! 	GEO_CTL%PTS(3,2,0) = POINT2D((DSIN(45.D0*DEGREE)-1.D0)/DCOS(45.D0*DEGREE),1.D0)
+! 	GEO_CTL%PTS(4,2,0) = POINT2D(0.D0,1.D0)
+! 	GEO_CTL%PTS(5,2,0) = POINT2D(-(DSIN(45.D0*DEGREE)-1.D0)/DCOS(45.D0*DEGREE),1.D0)
+! 	GEO_CTL%PTS(6,2,0) = POINT2D(DCOS(45.D0*DEGREE),DSIN(45.D0*DEGREE))
+! 	GEO_CTL%PTS(7,2,0) = POINT2D(1.D0,(1.D0-DCOS(45.D0*DEGREE))/DSIN(45.D0*DEGREE))
+! 	GEO_CTL%PTS(8,2,0) = POINT2D(1.D0,0.D0)
+! 	
+! 	DO I=0, 8
+! 		GEO_CTL%PTS(I,0,0) = 0.5D0*GEO_CTL%PTS(I,2,0)
+! 		GEO_CTL%PTS(I,1,0) = 0.75D0*GEO_CTL%PTS(I,2,0)
+! 	ENDDO
+! 	
+! 	DO I=0, 2
+! 		GEO_CTL%WGTS(0:8,I,0) = (/1.D0, DCOS(22.5D0*DEGREE), 1.D0, DCOS(22.5D0*DEGREE), 1.D0, DCOS(22.5D0*DEGREE), 1.D0, DCOS(22.5D0*DEGREE), 1.D0/)
+! 	ENDDO
+! 		
+! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+! QUARTER ANNULUS ver1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! 	GEO_KVEC(1)%POLY_ORDER = 2
+! 	GEO_KVEC(2)%POLY_ORDER = 2
+! 
+! 	GEO_KVEC(1)%LENGTH = 11
+! 	GEO_KVEC(2)%LENGTH = 5
+! 
+!  	GEO_NUMBS(:) = (/GEO_KVEC(1)%LENGTH-GEO_KVEC(1)%POLY_ORDER,GEO_KVEC(2)%LENGTH-GEO_KVEC(2)%POLY_ORDER/)
+! 	GEO_KVEC(1)%KNOTS(0:GEO_KVEC(1)%LENGTH) = (/0.D0, 0.D0, 0.D0, 0.25D0, 0.25D0, 0.5D0, 0.5D0, 0.75D0, 0.75D0, 1.D0, 1.D0, 1.D0/)
+! 	GEO_KVEC(2)%KNOTS(0:GEO_KVEC(2)%LENGTH) = (/0.D0, 0.D0, 0.D0, 1.D0, 1.D0, 1.D0/)
+! 	
+! ! SET CONTROL POINTS AND WEIGTH
+! 	GEO_CTL%D=2
+! 
+! 	GEO_CTL%PTS(0,2,0) = POINT2D(-DCOS(45.D0*DEGREE),DSIN(45.D0*DEGREE))
+! 	GEO_CTL%PTS(1,2,0) = POINT2D(-(-DSQRT(2.D0)+(1.D0/DCOS(22.5D0*DEGREE)))/(-1.D0+DTAN(22.5D0*DEGREE)), (1.D0/DCOS(22.5D0*DEGREE))*(-1.D0+DSQRT(2.D0)*DSIN(22.5D0*DEGREE))/(-1.D0+DTAN(22.5D0*DEGREE)))
+! 	GEO_CTL%PTS(2,2,0) = POINT2D(-DCOS(67.5D0*DEGREE),DSIN(67.5D0*DEGREE))
+! 	GEO_CTL%PTS(3,2,0) = POINT2D(-(1.D0/DTAN(22.5D0*DEGREE))*(-1.D0+(1.D0/DCOS(22.5D0*DEGREE))),1.D0)
+! 	GEO_CTL%PTS(4,2,0) = POINT2D(0.D0,1.D0)
+! 	GEO_CTL%PTS(5,2,0) = POINT2D(-GEO_CTL%PTS(3,2,0)%X, GEO_CTL%PTS(3,2,0)%Y)
+! 	GEO_CTL%PTS(6,2,0) = POINT2D(-GEO_CTL%PTS(2,2,0)%X, GEO_CTL%PTS(2,2,0)%Y)
+! 	GEO_CTL%PTS(7,2,0) = POINT2D(-GEO_CTL%PTS(1,2,0)%X, GEO_CTL%PTS(1,2,0)%Y)
+! 	GEO_CTL%PTS(8,2,0) = POINT2D(-GEO_CTL%PTS(0,2,0)%X, GEO_CTL%PTS(0,2,0)%Y)
+! 	
+! 	DO I=0, 8
+! 		GEO_CTL%PTS(I,0,0) = 0.6D0*GEO_CTL%PTS(I,2,0)
+! 		GEO_CTL%PTS(I,1,0) = 0.8D0*GEO_CTL%PTS(I,2,0)
+! ! 		GEO_CTL%PTS(I,2,0) = 0.8D0*GEO_CTL%PTS(I,2,0)
+! 	ENDDO
+! 	
+! 	DO I=0, 2
+! 		GEO_CTL%WGTS(0:8,I,0) = (/1.D0, DCOS(11.25D0*DEGREE), 1.D0, DCOS(11.25D0*DEGREE), 1.D0, DCOS(11.25D0*DEGREE), 1.D0, DCOS(11.25D0*DEGREE), 1.D0/)
+! 	ENDDO
+! ! 		
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+! QUARTER ANNULUS ver2
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! 	GEO_KVEC(1)%POLY_ORDER = 2
+! 	GEO_KVEC(2)%POLY_ORDER = 2
+! 
+! 	GEO_KVEC(1)%LENGTH = 11
+! 	GEO_KVEC(2)%LENGTH = 11
+! 
+!  	GEO_NUMBS(:) = (/GEO_KVEC(1)%LENGTH-GEO_KVEC(1)%POLY_ORDER,GEO_KVEC(2)%LENGTH-GEO_KVEC(2)%POLY_ORDER/)
+! 	GEO_KVEC(1)%KNOTS(0:GEO_KVEC(1)%LENGTH) = (/0.D0, 0.D0, 0.D0, 0.25D0, 0.25D0, 0.5D0, 0.5D0, 0.75D0, 0.75D0, 1.D0, 1.D0, 1.D0/)
+! 	GEO_KVEC(2)%KNOTS(0:GEO_KVEC(2)%LENGTH) = (/0.D0, 0.D0, 0.D0, 0.25D0, 0.25D0, 0.5D0, 0.5D0, 0.75D0, 0.75D0, 1.D0, 1.D0, 1.D0/)
+! 	
+! ! SET CONTROL POINTS AND WEIGTH
+! 	GEO_CTL%D=2
+! 
+! 	GEO_CTL%PTS(0,8,0) = POINT2D(-DCOS(45.D0*DEGREE),DSIN(45.D0*DEGREE))
+! 	GEO_CTL%PTS(1,8,0) = POINT2D(-(-DSQRT(2.D0)+(1.D0/DCOS(22.5D0*DEGREE)))/(-1.D0+DTAN(22.5D0*DEGREE)), (1.D0/DCOS(22.5D0*DEGREE))*(-1.D0+DSQRT(2.D0)*DSIN(22.5D0*DEGREE))/(-1.D0+DTAN(22.5D0*DEGREE)))
+! 	GEO_CTL%PTS(2,8,0) = POINT2D(-DCOS(67.5D0*DEGREE),DSIN(67.5D0*DEGREE))
+! 	GEO_CTL%PTS(3,8,0) = POINT2D(-(1.D0/DTAN(22.5D0*DEGREE))*(-1.D0+(1.D0/DCOS(22.5D0*DEGREE))),1.D0)
+! 	GEO_CTL%PTS(4,8,0) = POINT2D(0.D0,1.D0)
+! 	GEO_CTL%PTS(5,8,0) = POINT2D(-GEO_CTL%PTS(3,2,0)%X, GEO_CTL%PTS(3,2,0)%Y)
+! 	GEO_CTL%PTS(6,8,0) = POINT2D(-GEO_CTL%PTS(2,2,0)%X, GEO_CTL%PTS(2,2,0)%Y)
+! 	GEO_CTL%PTS(7,8,0) = POINT2D(-GEO_CTL%PTS(1,2,0)%X, GEO_CTL%PTS(1,2,0)%Y)
+! 	GEO_CTL%PTS(8,8,0) = POINT2D(-GEO_CTL%PTS(0,2,0)%X, GEO_CTL%PTS(0,2,0)%Y)
+! 	
+! 	DO J=0, 7
+! 		DO I=0, 8
+! 			GEO_CTL%PTS(I,J,0) = (0.5D0+(0.5D0/8.D0)*J)*GEO_CTL%PTS(I,2,0)
+! 		ENDDO
+! 	ENDDO
+! 	
+! 	DO I=0, 8
+! 		GEO_CTL%WGTS(0:8,I,0) = (/1.D0, DCOS(11.25D0*DEGREE), 1.D0, DCOS(11.25D0*DEGREE), 1.D0, DCOS(11.25D0*DEGREE), 1.D0, DCOS(11.25D0*DEGREE), 1.D0/)
+! 	ENDDO
+		
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+! annulus ver3
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! 	GEO_KVEC(1)%POLY_ORDER = 2
+! 	GEO_KVEC(2)%POLY_ORDER = 2
+! 
+! 	GEO_KVEC(1)%LENGTH = 5
+! 	GEO_KVEC(2)%LENGTH = 5
+! 
+! 	GEO_NUMBS(:) = (/GEO_KVEC(1)%LENGTH-GEO_KVEC(1)%POLY_ORDER,GEO_KVEC(2)%LENGTH-GEO_KVEC(2)%POLY_ORDER/)
+! 	GEO_KVEC(1)%KNOTS(0:GEO_KVEC(1)%LENGTH) = (/0.D0,0.D0,0.D0,1.D0,1.D0,1.D0/)
+! 	GEO_KVEC(2)%KNOTS(0:GEO_KVEC(2)%LENGTH) = (/0.D0,0.D0,0.D0,1.D0,1.D0,1.D0/)
+! 	
+! ! SET CONTROL POINTS AND WEIGTH
+! 	GEO_CTL%D=2
+! 	GEO_CTL%PTS(0,2,0) = POINT2D(0.D0,1.D0)
+! 	GEO_CTL%PTS(1,2,0) = POINT2D(1.D0,1.D0)
+! 	GEO_CTL%PTS(2,2,0) = POINT2D(1.D0,0.D0)
+! 	
+! 	DO J=0, 2
+! 		GEO_CTL%PTS(J,0,0) = 0.8D0*GEO_CTL%PTS(J,2,0)
+! 		GEO_CTL%PTS(J,1,0) = 0.9D0*GEO_CTL%PTS(J,2,0)
+! 	ENDDO
+! 	
+! 	GEO_CTL%WGTS(0,0,0) = 1.D0
+! 	GEO_CTL%WGTS(1,0,0) = 1.D0/DSQRT(2.D0)
+! 	GEO_CTL%WGTS(2,0,0) = 1.D0
+! 	GEO_CTL%WGTS(0,1,0) = 1.D0/DSQRT(2.D0)
+! 	GEO_CTL%WGTS(1,1,0) = 1.D0
+! 	GEO_CTL%WGTS(2,1,0) = 1.D0/DSQRT(2.D0)
+! 	GEO_CTL%WGTS(0,2,0) = 1.D0
+! 	GEO_CTL%WGTS(1,2,0) = 1.D0/DSQRT(2.D0)
+! 	GEO_CTL%WGTS(2,2,0) = 1.D0
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! square
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! 	GEO_KVEC(1)%POLY_ORDER = 2
+! 	GEO_KVEC(2)%POLY_ORDER = 2
+! 
+! 	GEO_KVEC(1)%LENGTH = 5
+! 	GEO_KVEC(2)%LENGTH = 5
+! 
+! 	GEO_NUMBS(:) = (/GEO_KVEC(1)%LENGTH-GEO_KVEC(1)%POLY_ORDER,GEO_KVEC(2)%LENGTH-GEO_KVEC(2)%POLY_ORDER/)
+! 	GEO_KVEC(1)%KNOTS(0:GEO_KVEC(1)%LENGTH) = (/0.D0,0.D0,0.D0,1.D0,1.D0,1.D0/)
+! 	GEO_KVEC(2)%KNOTS(0:GEO_KVEC(2)%LENGTH) = (/0.D0,0.D0,0.D0,1.D0,1.D0,1.D0/)
+! 	
+! ! SET CONTROL POINTS AND WEIGTH
+! 	GEO_CTL%D=2
+! 	GEO_CTL%PTS(0,0,0) = POINT2D(0.0D0,0.0D0)
+! 	GEO_CTL%PTS(1,0,0) = POINT2D(0.5D0,0.0D0)
+! 	GEO_CTL%PTS(2,0,0) = POINT2D(1.0D0,0.0D0)
+! 	GEO_CTL%PTS(0,1,0) = POINT2D(0.0D0,0.5D0)
+! 	GEO_CTL%PTS(1,1,0) = POINT2D(0.5D0,0.5D0)
+! 	GEO_CTL%PTS(2,1,0) = POINT2D(1.0D0,0.5D0)
+! 	GEO_CTL%PTS(0,2,0) = POINT2D(0.0D0,1.0D0)
+! 	GEO_CTL%PTS(1,2,0) = POINT2D(0.5D0,1.0D0)
+! 	GEO_CTL%PTS(2,2,0) = POINT2D(1.0D0,1.0D0)
+! 
+! ! 	GEO_CTL%PTS(0,0,0) = POINT2D(0.2D0,0.2D0)
+! ! 	GEO_CTL%PTS(1,0,0) = POINT2D(0.4D0,0.2D0)
+! ! 	GEO_CTL%PTS(2,0,0) = POINT2D(0.6D0,0.2D0)
+! ! 	GEO_CTL%PTS(0,1,0) = POINT2D(0.2D0,0.4D0)
+! ! 	GEO_CTL%PTS(1,1,0) = POINT2D(0.4D0,0.4D0)
+! ! 	GEO_CTL%PTS(2,1,0) = POINT2D(0.6D0,0.4D0)
+! ! 	GEO_CTL%PTS(0,2,0) = POINT2D(0.2D0,0.6D0)
+! ! 	GEO_CTL%PTS(1,2,0) = POINT2D(0.4D0,0.6D0)
+! ! 	GEO_CTL%PTS(2,2,0) = POINT2D(0.6D0,0.6D0)
+! 
+! ! 	GEO_CTL%PTS(0,0,0) = POINT2D(1.2D0,1.2D0)
+! ! 	GEO_CTL%PTS(1,0,0) = POINT2D(1.4D0,1.2D0)
+! ! 	GEO_CTL%PTS(2,0,0) = POINT2D(1.6D0,1.2D0)
+! ! 	GEO_CTL%PTS(0,1,0) = POINT2D(1.2D0,1.4D0)
+! ! 	GEO_CTL%PTS(1,1,0) = POINT2D(1.4D0,1.4D0)
+! ! 	GEO_CTL%PTS(2,1,0) = POINT2D(1.6D0,1.4D0)
+! ! 	GEO_CTL%PTS(0,2,0) = POINT2D(1.2D0,1.6D0)
+! ! 	GEO_CTL%PTS(1,2,0) = POINT2D(1.4D0,1.6D0)
+! ! 	GEO_CTL%PTS(2,2,0) = POINT2D(1.6D0,1.6D0)
+! 
+! 	GEO_CTL%WGTS(0:2,0:2,0) = 1.D0
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+! L-Shaped (for boundary layer)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! 	GEO_KVEC(1)%POLY_ORDER = 2
+! 	GEO_KVEC(2)%POLY_ORDER = 2
+! 
+! 	GEO_KVEC(1)%LENGTH = 7
+! 	GEO_KVEC(2)%LENGTH = 7
+! 
+! 	GEO_NUMBS(:) = (/GEO_KVEC(1)%LENGTH-GEO_KVEC(1)%POLY_ORDER,GEO_KVEC(2)%LENGTH-GEO_KVEC(2)%POLY_ORDER/)
+! 	GEO_KVEC(1)%KNOTS(0:GEO_KVEC(1)%LENGTH) = (/0.D0,0.D0,0.D0,0.5D0,0.5D0,1.D0,1.D0,1.D0/)
+! 	GEO_KVEC(2)%KNOTS(0:GEO_KVEC(2)%LENGTH) = (/0.D0,0.D0,0.D0,0.5D0,0.5D0,1.D0,1.D0,1.D0/)
+! 	
+! ! SET CONTROL POINTS AND WEIGTH
+! 	GEO_CTL%D=2
+! 	GEO_CTL%PTS(0,0,0) = POINT2D(0.D0,-1.D0)
+! 	GEO_CTL%PTS(1,0,0) = POINT2D(0.D0,-0.5D0)
+! 	GEO_CTL%PTS(2,0,0) = POINT2D(0.D0,0.D0)
+! 	GEO_CTL%PTS(3,0,0) = POINT2D(0.5D0,0.D0)
+! 	GEO_CTL%PTS(4,0,0) = POINT2D(1.D0,0.D0)
+! 	
+! 	GEO_CTL%PTS(0,4,0) = POINT2D(-1.D0,-1.D0)
+! 	GEO_CTL%PTS(1,4,0) = POINT2D(-1.D0,0.D0)
+! 	GEO_CTL%PTS(2,4,0) = POINT2D(-1.D0,1.D0)
+! 	GEO_CTL%PTS(3,4,0) = POINT2D(0.D0,1.D0)
+! 	GEO_CTL%PTS(4,4,0) = POINT2D(1.D0,1.D0)
+! 	
+! 	DO I=0, 4
+! 		GEO_CTL%PTS(I,1,0) = GEO_CTL%PTS(I,0,0) - 0.25D0*(GEO_CTL%PTS(I,0,0) - GEO_CTL%PTS(I,4,0))
+! 		GEO_CTL%PTS(I,2,0) = GEO_CTL%PTS(I,0,0) - 0.5D0*(GEO_CTL%PTS(I,0,0) - GEO_CTL%PTS(I,4,0))
+! 		GEO_CTL%PTS(I,3,0) = GEO_CTL%PTS(I,0,0) - 0.75D0*(GEO_CTL%PTS(I,0,0) - GEO_CTL%PTS(I,4,0))
+! 	ENDDO
+	
+! 	GEO_CTL%PTS(0,2,0) = POINT2D(,)
+! 	GEO_CTL%PTS(1,2,0) = POINT2D(,)
+! 	GEO_CTL%PTS(2,2,0) = POINT2D(,)
+! 	GEO_CTL%PTS(3,2,0) = POINT2D(,)
+! 	GEO_CTL%PTS(4,2,0) = POINT2D(,)
+	
+! 	GEO_CTL%WGTS(0:4,0:4,0) = 1.D0
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+! elas_crack test2 (Motz)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! NURBS geometrical map generates singular functions
+! 	GEO_KVEC(1)%POLY_ORDER = 2
+! 	GEO_KVEC(2)%POLY_ORDER = 2
+! 
+! 	GEO_KVEC(1)%LENGTH = 11
+! 	GEO_KVEC(2)%LENGTH = 7
+! 
+! 	GEO_NUMBS(:) = (/GEO_KVEC(1)%LENGTH-GEO_KVEC(1)%POLY_ORDER,GEO_KVEC(2)%LENGTH-GEO_KVEC(2)%POLY_ORDER/)
+! 	GEO_KVEC(1)%KNOTS(0:GEO_KVEC(1)%LENGTH) = (/0.D0, 0.D0, 0.D0, 0.25D0, 0.25D0, 0.5D0, 0.5D0, 0.75D0, 0.75D0, 1.D0, 1.D0, 1.D0/)
+! 	GEO_KVEC(2)%KNOTS(0:GEO_KVEC(2)%LENGTH) = (/0.D0, 0.D0, 0.D0, 0.5D0, 0.5D0, 1.D0, 1.D0, 1.D0/)
+! 	
+! ! SET CONTROL POINTS AND WEIGTH
+! 	GEO_CTL%D=2
+! 	GEO_CTL%PTS(0:8,0:1,0) = POINT2D(0.D0,0.D0)
+! 	GEO_CTL%WGTS(0:8,0,0) = (/1.D0, DCOS(22.5D0*DEGREE), 1.D0, DCOS(22.5D0*DEGREE), 1.D0, DCOS(22.5D0*DEGREE), 1.D0, DCOS(22.5D0*DEGREE), 1.D0/)
+! 	
+! 	GEO_CTL%WGTS(0:8,1,0) = (/1.D0, DCOS(22.5D0*DEGREE), 1.D0, DCOS(22.5D0*DEGREE), 1.D0, DCOS(22.5D0*DEGREE), 1.D0, DCOS(22.5D0*DEGREE), 1.D0/)
+! 													 
+! 	GEO_CTL%PTS(0:8,2,0) = (/POINT2D(-0.5D0,0.D0),POINT2D(-0.5D0,(2.D0-DSQRT(2.D0))/(2.D0*DSQRT(2.D0))),POINT2D(-1.D0/(2.D0*DSQRT(2.D0)),1.D0/(2.D0*DSQRT(2.D0))), &
+! 													 POINT2D((DSQRT(2.D0)-2.D0)/(2.D0*DSQRT(2.D0)),0.5D0),POINT2D(0.D0,0.5D0), &
+! 													 POINT2D((2.D0-DSQRT(2.D0))/(2.D0*DSQRT(2.D0)),0.5D0),POINT2D(1.D0/(2.D0*DSQRT(2.D0)),1.D0/(2.D0*DSQRT(2.D0))),&
+! 													 POINT2D(0.5D0,(2.D0-DSQRT(2.D0))/(2.D0*DSQRT(2.D0))),POINT2D(0.5D0,0.D0)/)
+! 	GEO_CTL%WGTS(0:8,2,0) = (/1.D0, DCOS(22.5D0*DEGREE), 1.D0, DCOS(22.5D0*DEGREE), 1.D0, DCOS(22.5D0*DEGREE), 1.D0, DCOS(22.5D0*DEGREE), 1.D0/)
+! 	
+! 	GEO_CTL%WGTS(0:8,3,0) = 1.D0
+! 	
+! 	GEO_CTL%PTS(0:8,4,0) = (/POINT2D(-1.D0,0.D0),POINT2D(-1.D0, DTAN(22.5D0*DEGREE)),POINT2D(-1.D0,1.D0),POINT2D(-DTAN(22.5D0*DEGREE),1.D0),POINT2D(0.D0,1.D0),POINT2D(DTAN(22.5D0*DEGREE),1.D0),POINT2D(1.D0,1.D0),POINT2D(1.D0,DTAN(22.5D0*DEGREE)),POINT2D(1.D0,0.D0)/)
+! 	GEO_CTL%WGTS(0:8,4,0) = 1.D0
+! 
+! 	DO I=0, 8
+! 		GEO_CTL%PTS(I,3,0) = 0.5D0*(GEO_CTL%PTS(I,2,0) + GEO_CTL%PTS(I,4,0))
+! 	ENDDO
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+! elas_crack test3 (L-Shaped)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! 	GEO_KVEC(1)%POLY_ORDER = 2
+! 	GEO_KVEC(2)%POLY_ORDER = 3
+! 
+! 	GEO_KVEC(1)%LENGTH = 15
+! 	GEO_KVEC(2)%LENGTH = 10
+! 
+!  	GEO_NUMBS(:) = (/GEO_KVEC(1)%LENGTH-GEO_KVEC(1)%POLY_ORDER,GEO_KVEC(2)%LENGTH-GEO_KVEC(2)%POLY_ORDER/)
+! 	GEO_KVEC(1)%KNOTS(0:GEO_KVEC(1)%LENGTH) = (/0.D0, 0.D0, 0.D0, 1.D0/6.D0, 1.D0/6.D0, 1.D0/3.D0, 1.D0/3.D0, 0.5D0, 0.5D0, 2.D0/3.D0, 2.D0/3.D0, 5.D0/6.D0, 5.D0/6.D0, 1.D0, 1.D0, 1.D0/)
+! 	GEO_KVEC(2)%KNOTS(0:GEO_KVEC(2)%LENGTH) = (/0.D0, 0.D0, 0.D0, 0.D0, 0.5D0, 0.5D0, 0.5D0, 1.D0, 1.D0, 1.D0, 1.D0/)
+! 	
+! ! SET CONTROL POINTS AND WEIGTH
+! 	GEO_CTL%D=2
+! 	
+! ! 	ALPHA = DCOS(PI/8.D0); BETA = DTAN(PI/8.D0)
+! 	
+! 	DO I=0, 12
+! 		GEO_CTL%PTS(I,0,0) = POINT2D(0.D0,0.D0)
+! 		GEO_CTL%PTS(I,1,0) = POINT2D(0.D0,0.D0)
+! 		GEO_CTL%PTS(I,2,0) = POINT2D(0.D0,0.D0)
+! 		
+! 		IF (MOD(I,2).EQ.0) THEN
+! 			GEO_CTL%WGTS(I,0,0) = 1.D0
+! 			GEO_CTL%WGTS(I,1,0) = 1.D0
+! 			GEO_CTL%WGTS(I,2,0) = 1.D0
+! 			GEO_CTL%WGTS(I,3,0) = 1.D0
+! 		ELSE
+! 			GEO_CTL%WGTS(I,0,0) = DCOS(PI/8.D0)
+! 			GEO_CTL%WGTS(I,1,0) = DCOS(PI/8.D0)
+! 			GEO_CTL%WGTS(I,2,0) = DCOS(PI/8.D0)
+! 			GEO_CTL%WGTS(I,3,0) = DCOS(PI/8.D0)
+! 		ENDIF
+! 		GEO_CTL%WGTS(I,4,0) = 1.D0
+! 		GEO_CTL%WGTS(I,5,0) = 1.D0
+! 		GEO_CTL%WGTS(I,6,0) = 1.D0
+! 	ENDDO
+! 	
+! 	GEO_CTL%PTS(0,3,0) = POINT2D(0.D0, -0.5D0)
+! 	GEO_CTL%PTS(1,3,0) = POINT2D(-0.5D0*DTAN(PI/8.D0),-0.5D0)
+! 	GEO_CTL%PTS(2,3,0) = POINT2D(-DSQRT(2.D0)/4.D0,-DSQRT(2.D0)/4.D0)
+! 	GEO_CTL%PTS(3,3,0) = POINT2D(-0.5D0,-0.5D0*DTAN(PI/8.D0))
+! 	GEO_CTL%PTS(4,3,0) = POINT2D(-0.5D0,0.D0)
+! 	GEO_CTL%PTS(5,3,0) = POINT2D(-0.5D0,0.5D0*DTAN(PI/8.D0))
+! 	GEO_CTL%PTS(6,3,0) = POINT2D(-DSQRT(2.D0)/4.D0,DSQRT(2.D0)/4.D0)
+! 	GEO_CTL%PTS(7,3,0) = POINT2D(-0.5D0*DTAN(PI/8.D0),0.5D0)
+! 	GEO_CTL%PTS(8,3,0) = POINT2D(0.D0,0.5D0)
+! 	GEO_CTL%PTS(9,3,0) = POINT2D(0.5D0*DTAN(PI/8.D0),0.5D0)
+! 	GEO_CTL%PTS(10,3,0) = POINT2D(DSQRT(2.D0)/4.D0,DSQRT(2.D0)/4.D0)
+! 	GEO_CTL%PTS(11,3,0) = POINT2D(0.5D0,0.5D0*DTAN(PI/8.D0))
+! 	GEO_CTL%PTS(12,3,0) = POINT2D(0.5D0,0.D0)
+! 	
+! 	GEO_CTL%PTS(0,6,0) = POINT2D(0.D0,-1.D0)
+! 	GEO_CTL%PTS(1,6,0) = POINT2D(-DTAN(PI/8.D0),-1.D0)
+! 	GEO_CTL%PTS(2,6,0) = POINT2D(-1.D0,-1.D0)
+! 	GEO_CTL%PTS(3,6,0) = POINT2D(-1.D0,-DTAN(PI/8.D0))
+! 	GEO_CTL%PTS(4,6,0) = POINT2D(-1.D0,0.D0)
+! 	GEO_CTL%PTS(5,6,0) = POINT2D(-1.D0,DTAN(PI/8.D0))
+! 	GEO_CTL%PTS(6,6,0) = POINT2D(-1.D0,1.D0)
+! 	GEO_CTL%PTS(7,6,0) = POINT2D(-DTAN(PI/8.D0),1.D0)
+! 	GEO_CTL%PTS(8,6,0) = POINT2D(0.D0,1.D0)
+! 	GEO_CTL%PTS(9,6,0) = POINT2D(DTAN(PI/8.D0),1.D0)
+! 	GEO_CTL%PTS(10,6,0) = POINT2D(1.D0,1.D0)
+! 	GEO_CTL%PTS(11,6,0) = POINT2D(1.D0,DTAN(PI/8.D0))
+! 	GEO_CTL%PTS(12,6,0) = POINT2D(1.D0,0.D0)
+! 	
+! 	DO I=0, 12
+! 		GEO_CTL%PTS(I,4,0) = (1.D0/3.D0)*(2.D0*GEO_CTL%PTS(I,3,0) + GEO_CTL%PTS(I,6,0))
+! 		GEO_CTL%PTS(I,5,0) = (1.D0/3.D0)*(GEO_CTL%PTS(I,3,0) + 2.D0*GEO_CTL%PTS(I,6,0))
+! 	ENDDO
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+! Cantilever
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	GEO_KVEC(1)%POLY_ORDER = 2
+	GEO_KVEC(2)%POLY_ORDER = 2
+
+	GEO_KVEC(1)%LENGTH = 5
+	GEO_KVEC(2)%LENGTH = 5
+
+	GEO_NUMBS(:) = (/GEO_KVEC(1)%LENGTH-GEO_KVEC(1)%POLY_ORDER,GEO_KVEC(2)%LENGTH-GEO_KVEC(2)%POLY_ORDER/)
+	GEO_KVEC(1)%KNOTS(0:GEO_KVEC(1)%LENGTH) = (/0.D0,0.D0,0.D0,1.D0,1.D0,1.D0/)
+	GEO_KVEC(2)%KNOTS(0:GEO_KVEC(2)%LENGTH) = (/0.D0,0.D0,0.D0,1.D0,1.D0,1.D0/)
+	
+! SET CONTROL POINTS AND WEIGTH
+	GEO_CTL%D=2
+	GEO_CTL%PTS(0,0,0) = POINT2D(0.0D0,-0.5D0*THICKNESS)
+	GEO_CTL%PTS(1,0,0) = POINT2D(0.5D0*LENGTH,-0.5D0*THICKNESS)
+	GEO_CTL%PTS(2,0,0) = POINT2D(LENGTH,-0.5D0*THICKNESS)
+	GEO_CTL%PTS(0,1,0) = POINT2D(0.0D0,0.D0)
+	GEO_CTL%PTS(1,1,0) = POINT2D(0.5D0*LENGTH,0.D0)
+	GEO_CTL%PTS(2,1,0) = POINT2D(LENGTH,0.D0)
+	GEO_CTL%PTS(0,2,0) = POINT2D(0.0D0,0.5D0*THICKNESS)
+	GEO_CTL%PTS(1,2,0) = POINT2D(0.5D0*LENGTH,0.5D0*THICKNESS)
+	GEO_CTL%PTS(2,2,0) = POINT2D(LENGTH,0.5D0*THICKNESS)
+
+	GEO_CTL%WGTS(0:2,0:2,0) = 1.D0
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+	WRITE(*,*)
+	WRITE(*,*) '<<< SET GEOMETRIC KNOT, CONTROL POINTS, AND WEIGHT : DONE >>>'
+	WRITE(*,*)
+	
+! SET KNOT INFO FOR B-SPLINE BASIS FUNCTIONS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	BASIS_KVEC(:) = GEO_KVEC(:)
+
+! 	IF (EXTRA_KNOTS(2)>0) THEN
+! 		BASIS_KVEC(2) = UNIFORM_KNOT_INSERTION(BASIS_KVEC(2),EXTRA_KNOTS(2))
+! 	ENDIF
+	
+	IF (BS_ORDER(1).GT.GEO_KVEC(1)%POLY_ORDER) THEN
+		DO I=1, BS_ORDER(1) - GEO_KVEC(1)%POLY_ORDER
+			BASIS_KVEC(1) = DEGREE_ELEVATION(BASIS_KVEC(1),0)
+		ENDDO
+	ENDIF
+	IF (BS_ORDER(2).GT.GEO_KVEC(2)%POLY_ORDER) THEN
+		DO I=1, BS_ORDER(2) - GEO_KVEC(2)%POLY_ORDER
+			BASIS_KVEC(2) = DEGREE_ELEVATION(BASIS_KVEC(2),0)
+		ENDDO
+	ENDIF
+
+	IF (EXTRA_KNOTS(1)>0) THEN
+		BASIS_KVEC(1) = UNIFORM_KNOT_INSERTION(BASIS_KVEC(1),EXTRA_KNOTS(1))
+	ENDIF
+	IF (EXTRA_KNOTS(2)>0) THEN
+	BASIS_KVEC(2) = UNIFORM_KNOT_INSERTION(BASIS_KVEC(2),EXTRA_KNOTS(2))
+	ENDIF
+	
+! 	IF (EXTRA_KNOTS(1)>0) THEN
+! 		BASIS_KVEC(1) = END_KNOT_INSERTION(BASIS_KVEC(1),BD_KNOTS(1),'B')
+! 	ENDIF
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+	WRITE(*,*)
+	WRITE(*,*) '<<< SET BASIS KNOT : DONE >>>'
+	WRITE(*,*)
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	NUMBS(:) = (/BASIS_KVEC(1)%LENGTH - BS_ORDER(1), BASIS_KVEC(2)%LENGTH - BS_ORDER(2)/)
+	DOF = NUMBS(1)*NUMBS(2)
+	
+! GLOBAL INDEX
+	ALLOCATE(NDX(2,DOF))
+	DO I=1, DOF
+		NDX(1,I)=MOD(I+(NUMBS(1)-1), NUMBS(1))
+		NDX(2,I)=MOD(INT((I-1)/NUMBS(1))+NUMBS(2), NUMBS(2))
+	ENDDO
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+	WRITE(*,*)
+	WRITE(*,*) '<<< SET GLOBAL INDEX : DONE >>>'
+	WRITE(*,*)
+
+! CONSTRUCT THE FRAME OF LOCAL INTEGRAL REGIONS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	IR_GRID(1,1) = 0.D0
+	IR_GRID(2,1) = 0.D0
+	
+! 	PRINT*, BASIS_KVEC(1)%LENGTH, BASIS_KVEC(2)%LENGTH
+	K = 1
+	DO I=1, BASIS_KVEC(1)%LENGTH
+		K = K + 1
+		IF (DABS(BASIS_KVEC(1)%KNOTS(I-1) - BASIS_KVEC(1)%KNOTS(I)).LE.EPS) THEN
+			K = K - 1
+		ELSE
+			IR_GRID(1,K) = BASIS_KVEC(1)%KNOTS(I)
+		ENDIF
+! 		IF (K.GE.2) THEN
+! 			DO J=1, 
+! 		ENDIF
+	ENDDO
+	NUMIR(1) = K
+	
+	K = 1
+	DO I=1, BASIS_KVEC(2)%LENGTH
+		K = K + 1
+		IF (DABS(BASIS_KVEC(2)%KNOTS(I-1) - BASIS_KVEC(2)%KNOTS(I)).LE.EPS) THEN
+			K = K - 1
+		ELSE
+			IR_GRID(2,K) = BASIS_KVEC(2)%KNOTS(I)
+		ENDIF
+	ENDDO
+	NUMIR(2) = K
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+	WRITE(*,*)
+	WRITE(*,*) '<<< SET INTEGRAL REGION : DONE >>>'
+	WRITE(*,*)
+
+! SET INDEX OF BASIS FUNCTIONS ON BOUNDARY WILL BE IMPOSED BY NEUMANN BOUNDARY CONDITIONS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	ALLOCATE(BD_MASK(DOF))
+	BD_MASK(:) = .FALSE.
+	BD_DOF = 0
+
+	DO I=1, NEUMANN_NUMBD
+		DO J=1, MAX_LENGTH
+			NEUMANN_BDNDX(I,J)%LC_NDX = (/0, 0/)
+		ENDDO
+	ENDDO
+	NEUMANN_BDNDX(1:NEUMANN_NUMBD,1:MAX_LENGTH)%GL_NDX = 0
+	NEUMANN_BDNDX(1:NEUMANN_NUMBD,1:MAX_LENGTH)%LC_NUM = 0
+	
+	! NEUMANN BOUNDARY CONDITION
+	
+	K = 0
+	DO I=1, DOF
+		IF (NDX(2,I)==0) THEN
+			K = K + 1
+			NEUMANN_BDNDX(1,K)%LC_NDX(:) = NDX(:,I)
+			NEUMANN_BDNDX(1,K)%GL_NDX = I
+		ENDIF
+	ENDDO
+	NEUMANN_BDNDX(1,:)%LC_NUM = K
+	
+	K = 0
+	DO I=1, DOF
+		IF (NDX(2,I)==NUMBS(2)-1) THEN
+			K = K + 1
+			NEUMANN_BDNDX(2,K)%LC_NDX(:) = NDX(:,I)
+			NEUMANN_BDNDX(2,K)%GL_NDX = I
+		ENDIF
+	ENDDO
+	NEUMANN_BDNDX(2,:)%LC_NUM = K
+	
+	K = 0
+	DO I=1, DOF
+		IF (NDX(1,I).EQ.NUMBS(1)-1) THEN
+			K = K + 1
+			NEUMANN_BDNDX(3,K)%LC_NDX(:) = NDX(:,I)
+			NEUMANN_BDNDX(3,K)%GL_NDX = I
+		ENDIF
+	ENDDO
+	NEUMANN_BDNDX(3,:)%LC_NUM = K
+
+! SET INDEX OF BASIS FUNCTIONS ON BOUNDARY WILL BE IMPOSED BY DIRICHLET BOUNDARY CONDITION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+	DO I=1, DIRICHLET_NUMBD
+		DO J=1, MAX_LENGTH
+			DIRICHLET_BDNDX(I,J)%LC_NDX = (/0, 0/)
+		ENDDO
+	ENDDO
+	DIRICHLET_BDNDX(1:DIRICHLET_NUMBD,1:MAX_LENGTH)%GL_NDX = 0
+	DIRICHLET_BDNDX(1:DIRICHLET_NUMBD,1:MAX_LENGTH)%LC_NUM = 0
+
+	K = 0
+	DO I=1, DOF
+! 		IF (NDX(1,I)>=(NUMBS(1) - BS_ORDER(1) - EXTRA_KNOTS(1)) .AND. NDX(2,I)==(NUMBS(2)-1)) THEN
+! 			IF (NDX(1,I)==0 .OR. NDX(1,I)==NUMBS(1)-1 .OR. NDX(2,I)==NUMBS(2)-1) THEN
+! 			IF (NDX(1,I)==0 .OR. NDX(1,I)==NUMBS(1)-1 .OR. NDX(2,I)==0 .OR. NDX(2,I)==NUMBS(2)-1) THEN
+			IF (NDX(1,I)==0) THEN
+			K = K + 1
+			DIRICHLET_BDNDX(1,K)%LC_NDX(:) = NDX(:,I)
+			DIRICHLET_BDNDX(1,K)%GL_NDX = I
+			BD_MASK(I)=.TRUE.
+			BD_DOF = BD_DOF + 1
+		ENDIF
+	ENDDO
+	DIRICHLET_BDNDX(1,:)%LC_NUM = K
+! 	PRINT*, 'DIRICHLET_BDNDX_LC_NUM :', K
+	
+	BD_DOF = 2*BD_DOF
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+	WRITE(*,*)
+	WRITE(*,*) '<<< SET LOCAL INDEX CORRESPONDING BASIS FUNCTIONS ON BOUNDARY IMPOSED ESSENTIAL BOUNDARY CONDITION : DONE >>>'
+	WRITE(*,*)
+
+!!  GENERATE BINOMIAL COEFFICIENTS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	DO I = 1, MAX_DIFF_ORDER
+		DO J = 0, MAX_DIFF_ORDER
+			BINOM(I,J) = 1.0D0
+		ENDDO
+	ENDDO
+
+	BINOM(1,0) = 1.0D0
+	BINOM(1,1) = 1.0D0
+	DO I = 2, MAX_DIFF_ORDER
+		BINOM(I,0) = BINOM(I-1,0)
+		DO J = 1, I-1
+			BINOM(I,J) = BINOM(I-1,J-1) + BINOM(I-1,J)
+		ENDDO
+		BINOM(I,I) = BINOM(I-1,I-1)
+	ENDDO
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+	IF (PLANE_TYPE.EQ.'STRESS') THEN
+		STRESS_E33 = E/(2.0D0*(1.D0+V))
+		STRESS_E11 = E/(1.D0-V**2)
+		STRESS_E22 = STRESS_E11
+		STRESS_E12 = V*STRESS_E11
+		STRESS_E21 = V*STRESS_E11
+		E_ZERO = E
+		V_ZERO = V
+	ELSEIF (PLANE_TYPE.EQ.'STRAIN') THEN
+		STRESS_E33 = E/(2.0D0*(1.D0+V))
+		STRESS_E11 = E/(1.D0-V**2)
+		STRESS_E22 = STRESS_E11
+		STRESS_E12 = V*STRESS_E11
+		STRESS_E21 = V*STRESS_E11
+		E_ZERO = E/(1.D0-V**2)
+		V_ZERO = V/(1.D0-V)
+	ELSE
+		PRINT*, 'ERROR IN SETTING UP STRESS-STRAIN MATRIX'
+		STOP
+	ENDIF
+	
+	STRESS_E = RESHAPE((/ STRESS_E11,STRESS_E12,0.D0,STRESS_E21,STRESS_E22,0.D0,0.D0,0.D0,STRESS_E33/), (/ 3, 3 /), ORDER=ORDER2)
+	
+END SUBROUTINE GET_GEO
+
+END MODULE GEOMETRY
+
