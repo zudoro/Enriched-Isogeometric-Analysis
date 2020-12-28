@@ -1,0 +1,1472 @@
+MODULE BOUNDARY
+
+	USE INTEGRATION
+	USE LUDECOMPOSITION
+
+  implicit integer (i-n)
+	implicit real(8) (a-h,o-z)
+
+CONTAINS
+
+SUBROUTINE IMPOSEBD(K, F)
+
+	REAL*8, INTENT(INOUT) :: K(2*DOF,2*DOF), F(2*DOF)
+	REAL*8 :: SUB_K(SUM(DR_BDNDX(:,1)%LC_NUM),SUM(DR_BDNDX(:,1)%LC_NUM))
+	
+	TYPE(POINT2D) :: PINCH_DISP(2), SUB_F(SUM(DR_BDNDX(:,1)%LC_NUM))
+	REAL*8 :: DMY_SUB_K(SUM(DR_BDNDX(:,1)%LC_NUM), SUM(DR_BDNDX(:,1)%LC_NUM)), DD
+	INTEGER :: I, J, II, JJ, KK, INDX(SUM(DR_BDNDX(:,1)%LC_NUM)), PINCH_BS_INDX(2), LC_NUM_SUM
+	TYPE(POINT2D) :: LN_INT
+
+	DO I=1, 2*DOF
+		DO J=1, 2*DOF
+			IF (DABS(K(I,J)).LE.EPS) THEN
+				K(I,J) = 0.D0
+			ENDIF
+		ENDDO
+	ENDDO
+	
+	IF (BCTYPE=='neuma') THEN
+! IMPOSE NEUMANN BOUNDARY CONDITION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	CALL IMPOSE_NEUMANN_BD(F)
+
+! 	CALL TS_NEUMANN(F)
+
+! PINCH TWO POINTS IN THE CASE OF IMPOSING NEUMANN B.C. ON ALL BOUNDARY
+! 	PINCH_BS_INDX(1) = 1
+! 	PINCH_BS_INDX(2) = SUM(LOCAL_DOF(1:3))
+! 
+! 	!! Physical point = (-2, -2)
+! 	PINCH_DISP(1) = EX_DISP(POINT2D(0.D0,0.D0),1) !<----- CAUTION!!!!! PUT A REFERENCE POINT CORRESPONDING TO A PINCH POINT ON PHYSICAL DOMAIN
+! 	!! Physical point = (0, 0)
+! 	PINCH_DISP(2) = EX_DISP(POINT2D(1.D0,1.D0),3) !<----- CAUTION!!!!! PUT A REFERENCE POINT CORRESPONDING TO A PINCH POINT ON PHYSICAL DOMAIN
+! 
+! 	DO J=1, 2*DOF
+! 		F(J) = F(J) - PINCH_DISP(1)%X*K(J,PINCH_BS_INDX(1)) - PINCH_DISP(1)%Y*K(J, DOF + PINCH_BS_INDX(1))
+! 		F(J) = F(J) - PINCH_DISP(2)%X*K(J, PINCH_BS_INDX(2)) - PINCH_DISP(2)%Y*K(J, DOF + PINCH_BS_INDX(2))
+! 	ENDDO
+! 
+! 	F(PINCH_BS_INDX(1)) = PINCH_DISP(1)%X; F(PINCH_BS_INDX(2)) = PINCH_DISP(2)%X
+! 	F(DOF + PINCH_BS_INDX(1)) = PINCH_DISP(1)%Y; F(DOF + PINCH_BS_INDX(2)) = PINCH_DISP(2)%Y
+! 	DO J=1, 2*DOF
+! 		K(PINCH_BS_INDX(1),J) = 0.0D0; K(PINCH_BS_INDX(2),J) = 0.D0
+! 		K(DOF + PINCH_BS_INDX(1),J) = 0.0D0; K(DOF + PINCH_BS_INDX(2), J) = 0.D0
+! 
+! 		K(J,PINCH_BS_INDX(1)) = 0.0D0; K(J,PINCH_BS_INDX(2)) = 0.D0
+! 		K(J,DOF + PINCH_BS_INDX(1)) = 0.0D0; K(J,DOF + PINCH_BS_INDX(2)) = 0.D0
+! 	ENDDO
+! 	K(PINCH_BS_INDX(1), PINCH_BS_INDX(1)) = 1.0D0; K(PINCH_BS_INDX(2),PINCH_BS_INDX(2)) = 1.D0
+! 	K(DOF + PINCH_BS_INDX(1), DOF + PINCH_BS_INDX(1)) = 1.0D0; K(DOF + PINCH_BS_INDX(2),DOF + PINCH_BS_INDX(2)) = 1.D0
+! 
+! 	F(LOCAL_DOF(1)) = 0.D0
+! 	F(DOF + LOCAL_DOF(1)) = 0.D0
+! 	DO J=1, 2*DOF
+! 		K(LOCAL_DOF(1),J) = 0.D0
+! 		K(J,LOCAL_DOF(1)) = 0.D0
+! 		K(DOF + LOCAL_DOF(1),J) = 0.D0
+! 		K(J,DOF + LOCAL_DOF(1)) = 0.D0
+! 	ENDDO
+! 	K(LOCAL_DOF(1),LOCAL_DOF(1)) = 1.D0
+! 	K(DOF + LOCAL_DOF(1), DOF + LOCAL_DOF(1)) = 1.D0
+
+	PRINT*, 
+	PRINT*, '<<< IMPOSING NEUMANN BOUNDARY CONDITIONS : DONE >>>'
+	PRINT*, 
+
+	ELSE
+! IMPOSE DIRICHLET BOUNDARY CONDITION BY USING LEAST SQUARE METHOD
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	SUB_K(:,:) = 0.D0
+	SUB_F(:) = POINT2D(0.D0,0.D0)
+
+! 	OPEN(121, FILE = 'least_square')
+	
+	CALL GEN_BD_LN(SUB_K, SUB_F)
+	
+! 	CALL DR_BUGKILLER(SUB_K, SUB_F)
+	
+! 	PRINT*, 'HERE 1'
+! 	OPEN(124, FILE = './data/sub_k')
+! 	OPEN(125, FILE = './data/sub_f')
+! 	DO I=1, SUM(DR_BDNDX(:,1)%LC_NUM)
+! 		WRITE(124, 102) (SUB_K(I,J), J=1, SUM(DR_BDNDX(:,1)%LC_NUM))
+! 		WRITE(125, 102) SUB_F(I)
+! 	ENDDO
+! 	CLOSE(124)
+! 	CLOSE(125)
+	
+	102 FORMAT(1000(f20.8,1x))
+	
+	DMY_SUB_K(:,:) = SUB_K(:,:)
+	CALL LUDCMP(DMY_SUB_K, SUM(DR_BDNDX(:,1)%LC_NUM), SUM(DR_BDNDX(:,1)%LC_NUM), INDX, DD)
+	CALL LUBKSB(DMY_SUB_K, SUM(DR_BDNDX(:,1)%LC_NUM), SUM(DR_BDNDX(:,1)%LC_NUM), INDX, SUB_F(:)%X)
+	
+! 	OPEN(1, FILE = './data/sub_solx')
+! 	DO I = 1, SUM(DR_BDNDX(:,1)%LC_NUM)
+! 		WRITE(1,*) SUB_F(I)%X
+! 	ENDDO
+! 	CLOSE(1)
+
+	DMY_SUB_K(:,:) = SUB_K(:,:)
+	CALL LUDCMP(DMY_SUB_K, SUM(DR_BDNDX(:,1)%LC_NUM), SUM(DR_BDNDX(:,1)%LC_NUM), INDX, DD)
+	CALL LUBKSB(DMY_SUB_K, SUM(DR_BDNDX(:,1)%LC_NUM), SUM(DR_BDNDX(:,1)%LC_NUM), INDX, SUB_F(:)%Y)
+	
+! 	OPEN(1, FILE = './data/sub_soly')
+! 	DO I = 1, SUM(DR_BDNDX(:,1)%LC_NUM)
+! 		WRITE(1,*) SUB_F(I)%Y
+! 	ENDDO
+! 	CLOSE(1)
+
+! 	SUBTRACT EXACT SOLUTIONS FROM THE LOAD VECTOR
+	DO II=1, NUM_PATCH
+		IF (II.EQ.1) THEN
+			LC_NUM_SUM = 0
+		ELSE
+			LC_NUM_SUM = SUM(DR_BDNDX(1:II-1,1)%LC_NUM)
+		ENDIF
+! 					PRINT*, LC_NUM_SUM
+		DO I=1, DR_BDNDX(II,1)%LC_NUM
+			DO J=1, 2*DOF
+				F(J) = F(J) - SUB_F(LC_NUM_SUM + I)%X*K(J, DR_BDNDX(II,I)%GL_NDX) - SUB_F(LC_NUM_SUM + I)%Y*K(J, DOF + DR_BDNDX(II,I)%GL_NDX)
+			ENDDO
+		ENDDO
+	ENDDO
+
+! PRINT*, 'HERE 4'
+
+	DO II=1, NUM_PATCH
+		IF (II.EQ.1) THEN
+			LC_NUM_SUM = 0
+		ELSE
+			LC_NUM_SUM = SUM(DR_BDNDX(1:II-1,1)%LC_NUM)
+		ENDIF
+		DO I=1, DR_BDNDX(II,1)%LC_NUM
+			F(DR_BDNDX(II,I)%GL_NDX) = SUB_F(LC_NUM_SUM + I)%X
+			F(DOF + DR_BDNDX(II,I)%GL_NDX) = SUB_F(LC_NUM_SUM + I)%Y
+! 			PRINT*, F(DR_BDNDX(II,I)%GL_NDX), F(DOF+BDNDX(II,I)%GL_NDX)
+			DO J=1, 2*DOF
+				K(DR_BDNDX(II,I)%GL_NDX,J) = 0.0D0
+				K(J,DR_BDNDX(II,I)%GL_NDX) = 0.0D0
+				K(DOF + DR_BDNDX(II,I)%GL_NDX,J) = 0.0D0
+				K(J, DOF + DR_BDNDX(II,I)%GL_NDX) = 0.0D0
+			ENDDO
+			K(DR_BDNDX(II,I)%GL_NDX, DR_BDNDX(II,I)%GL_NDX) = 1.0D0
+			K(DOF + DR_BDNDX(II,I)%GL_NDX, DOF + DR_BDNDX(II,I)%GL_NDX) = 1.0D0
+		ENDDO
+	ENDDO
+	
+	!!--------------------------------------------------------------------------------------------------------------------!!
+	!! Impose zero Dirichlet boundary conditions
+	DO II=1, NUM_PATCH
+		IF (II.EQ.1) THEN
+			LC_NUM_SUM = 0
+		ELSE
+			LC_NUM_SUM = SUM(ZERO_BDNDX(1:II-1,1)%LC_NUM)
+		ENDIF
+		DO I=1, ZERO_BDNDX(II,1)%LC_NUM
+			F(ZERO_BDNDX(II,I)%GL_NDX) = 0.D0
+			F(DOF + ZERO_BDNDX(II,I)%GL_NDX) = 0.D0
+! 			PRINT*, F(ZERO_BDNDX(II,I)%GL_NDX), F(DOF+BDNDX(II,I)%GL_NDX)
+			DO J=1, 2*DOF
+				K(ZERO_BDNDX(II,I)%GL_NDX, J) = 0.0D0
+				K(J, ZERO_BDNDX(II,I)%GL_NDX) = 0.0D0
+				K(DOF + ZERO_BDNDX(II,I)%GL_NDX, J) = 0.0D0
+				K(J, DOF + ZERO_BDNDX(II,I)%GL_NDX) = 0.0D0
+			ENDDO
+			K(ZERO_BDNDX(II,I)%GL_NDX, ZERO_BDNDX(II,I)%GL_NDX) = 1.0D0
+			K(DOF + ZERO_BDNDX(II,I)%GL_NDX, DOF + ZERO_BDNDX(II,I)%GL_NDX) = 1.0D0
+		ENDDO
+	ENDDO
+	
+	PRINT*, 
+	PRINT*, '<<< IMPOSING ESSENTIAL BOUNDARY CONDITIONS BY USING LEAST SQUARE METHOD : DONE >>>'
+	PRINT*, 
+	
+	ENDIF
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+END SUBROUTINE IMPOSEBD
+
+SUBROUTINE DR_BUGKILLER(SUB_K, SUB_F)
+
+	REAL*8, INTENT(IN) :: SUB_K(SUM(DR_BDNDX(:,1)%LC_NUM),SUM(DR_BDNDX(:,1)%LC_NUM))
+	TYPE(POINT2D), INTENT(IN) :: SUB_F(SUM(DR_BDNDX(:,1)%LC_NUM))
+	
+	REAL*8 :: BD_INT(3), BD_WEIGHT(NUMGSPT), DET_JF, DET_M
+	TYPE(POINT2D) :: GSPT, PHYPT_F, INV_PHYPT_G
+	TYPE(POINT2D) :: EXBD(NUMGSPT)
+	TYPE(FVALUE) :: BD_SF(2,NUMGSPT)
+	INTEGER :: I, J, K, II, JJ, KK, PATCH, EGM_PATCH, IGA_PATCH, LC_NDX_I(2), LC_NDX_J(2)
+	INTEGER :: GLOBAL_I, GLOBAL_J
+	INTEGER, ALLOCATABLE :: GLOBAL_INDX1(:), GLOBAL_INDX2(:)
+	TYPE(MATRIX_22) :: JACOB_F, JACOB_G, JACOB
+	CHARACTER(LEN=1) :: GAMMA_HAT
+	
+	ALLOCATE(GLOBAL_INDX1(3), GLOBAL_INDX2(3))
+	
+	!----- CHECK DIRICHLET BOUNDARY -----!
+
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	!------------------------------------!
+	! (1) SUB_K (17,17), SUB_F(17)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	PATCH = 4
+	LC_NDX_I = (/0, 0/)
+	II = 17; JJ = 17
+	!------------------------------------!
+! 	PRINT*, '-------------------------'
+	CALL GAULEG(0.D0, 0.5D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(0.D0, GSY(I))
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+! 		PRINT*, BD_SF(1,I)%D00, DET_M
+	ENDDO
+! 		PRINT*, '-------------------------'
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(1,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(II)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',II,') - ', DABS(SUB_F(II)%Y - BD_INT(3))
+		PRINT*, SUB_F(II)%Y, BD_INT(3)
+	ENDIF
+
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+
+	!------------------------------------!
+	! (1) SUB_K (18,18), SUB_F(18)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	PATCH = 4
+	LC_NDX_I = (/9, 0/)
+	II = 18; JJ = 18
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 0.5D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(1.D0, GSY(I))
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(1,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(II)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',II,') - ', DABS(SUB_F(II)%Y - BD_INT(3))
+		PRINT*, SUB_F(II)%Y, BD_INT(3)
+	ENDIF
+
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+
+	!------------------------------------!
+	! (1) SUB_K (16,14), SUB_F(14)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	PATCH = 3
+	LC_NDX_I = (/2, 1/)
+	LC_NDX_J = (/2, 0/)
+	II = 16; JJ = 14
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 1.D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(1.D0, GSY(I))
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+	CALL GAULEG(0.D0, 1.D0, GSX, GSXW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(GSX(I), 0.D0)
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSXW(I)
+! 		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+! 	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = BD_INT(3) + DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(JJ)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',JJ,') - ', DABS(SUB_F(JJ)%Y - BD_INT(3))
+		PRINT*, SUB_F(JJ)%Y, BD_INT(3)
+	ENDIF
+	
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	!------------------------------------!
+	! (1) SUB_K (16,21)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	IGA_PATCH = 3
+	EGM_PATCH = 4
+	LC_NDX_I = (/2, 1/)
+	LC_NDX_J = (/0, 2/)
+	II = 16; JJ = 21
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 0.5D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(0.D0, GSY(I))
+		PHYPT_F = GET_PHY_PT(GSPT, EGM_PATCH)
+		INV_PHYPT_G = GET_REF_PT(PHYPT_F, IGA_PATCH)
+		JACOB_F = GET_JACOBIAN_MATRIX(GSPT, EGM_PATCH)
+		JACOB_G = GET_JACOBIAN_MATRIX(INV_PHYPT_G, IGA_PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, EGM_PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), EGM_PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(INV_PHYPT_G, LC_NDX_I(1), LC_NDX_I(2), IGA_PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+! 	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)
+	
+! 	CALL GAULEG(0.5D0, 1.D0, GSY, GSYW, NUMGSPT)
+! 	DO I=1,NUMGSPT
+! 		GSPT = POINT2D(0.D0, GSY(I))
+! 		PHYPT_F = GET_PHY_PT(GSPT, EGM_PATCH)
+! 		INV_PHYPT_G = GET_REF_PT(PHYPT_F, IGA_PATCH)
+! 		JACOB_F = GET_JACOBIAN_MATRIX(GSPT, EGM_PATCH)
+! 		JACOB_G = GET_JACOBIAN_MATRIX(INV_PHYPT_G, IGA_PATCH)
+! 		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+! 		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+! 		BD_WEIGHT(I) = DET_M*GSYW(I)
+! 		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), EGM_PATCH)
+! 		BD_SF(2,I) = GET_PHY_BASIS(INV_PHYPT_G, LC_NDX_I(1), LC_NDX_I(2), IGA_PATCH)
+! 		EXBD(I) = EX_DISP(GSPT, PATCH)
+! 	ENDDO
+! 	BD_INT(2) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+! 	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)
+	
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	!------------------------------------!
+	! (1) SUB_K (16,17)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	IGA_PATCH = 3
+	EGM_PATCH = 4
+	LC_NDX_I = (/2, 1/)
+	LC_NDX_J = (/0, 0/)
+	II = 16; JJ = 17
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 0.5D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(0.D0, GSY(I))
+		PHYPT_F = GET_PHY_PT(GSPT, EGM_PATCH)
+		INV_PHYPT_G = GET_REF_PT(PHYPT_F, IGA_PATCH)
+		JACOB_F = GET_JACOBIAN_MATRIX(GSPT, EGM_PATCH)
+		JACOB_G = GET_JACOBIAN_MATRIX(INV_PHYPT_G, IGA_PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, EGM_PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), EGM_PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(INV_PHYPT_G, LC_NDX_I(1), LC_NDX_I(2), IGA_PATCH)
+		EXBD(I) = EX_DISP(GSPT, EGM_PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)
+	
+! 	CALL GAULEG(0.5D0, 1.D0, GSY, GSYW, NUMGSPT)
+! 	DO I=1,NUMGSPT
+! 		GSPT = POINT2D(0.D0, GSY(I))
+! 		PHYPT_F = GET_PHY_PT(GSPT, EGM_PATCH)
+! 		INV_PHYPT_G = GET_REF_PT(PHYPT_F, IGA_PATCH)
+! 		JACOB_F = GET_JACOBIAN_MATRIX(GSPT, EGM_PATCH)
+! 		JACOB_G = GET_JACOBIAN_MATRIX(INV_PHYPT_G, IGA_PATCH)
+! 		DET_M = GET_DET_DR(GSPT, EGM_PATCH, GAMMA_HAT)
+! 		BD_WEIGHT(I) = DET_M*GSYW(I)
+! 		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), EGM_PATCH)
+! 		BD_SF(2,I) = GET_PHY_BASIS(INV_PHYPT_G, LC_NDX_I(1), LC_NDX_I(2), IGA_PATCH)
+! 		EXBD(I) = EX_DISP(GSPT, PATCH)
+! 	ENDDO
+! 	BD_INT(2) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+! ! 	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)
+	
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(JJ)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',JJ,') - ', DABS(SUB_F(JJ)%Y - BD_INT(3))
+		PRINT*, SUB_F(JJ)%Y, BD_INT(3)
+	ENDIF
+	
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	!------------------------------------!
+	! (1) SUB_K (1,1), SUB_F(1)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	PATCH = 1
+	LC_NDX_I = (/0, 0/)
+	LC_NDX_J = (/0, 0/)
+	II = 1; JJ = 1
+	GAMMA_HAT = 'B'
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 1.D0, GSX, GSXW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(GSX(I), 0.D0)
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSXW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+! 	PRINT*, 'SUB_F(1)%X - 1', BD_INT(3)
+	!------------------------------------!
+	PATCH = 3
+	LC_NDX_I = (/2, 2/)
+	LC_NDX_J = (/2, 2/)
+	II = 1; JJ = 1
+	GAMMA_HAT = 'R'
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 1.D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(1.D0, GSY(I))
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+	BD_INT(2) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = BD_INT(3) + DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+! 	PRINT*, 'SUB_F(1)%X - 2', DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+! 	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, BD_INT(1), BD_INT(2)
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+! 	ENDIF
+	
+! 	IF (DABS(SUB_F(II)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',II,') - ', DABS(SUB_F(II)%Y - BD_INT(3))
+		PRINT*, SUB_F(II)%Y, BD_INT(3)
+! 	ENDIF
+	
+		PRINT*, 'SUB_F(1)%Y'
+		PRINT*, 'SUB_F(1)%Y', SUB_F(II)%Y, BD_INT(3)
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	!------------------------------------!
+	! (1) SUB_K (1,17)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	IGA_PATCH = 3
+	EGM_PATCH = 4
+	LC_NDX_I = (/2, 2/)
+	LC_NDX_J = (/0, 0/)
+	II = 1; JJ = 17
+	GAMMA_HAT = 'L'
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 0.5D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(0.D0, GSY(I))
+		PHYPT_F = GET_PHY_PT(GSPT, EGM_PATCH)
+		INV_PHYPT_G = GET_REF_PT(PHYPT_F, IGA_PATCH)
+		JACOB_F = GET_JACOBIAN_MATRIX(GSPT, EGM_PATCH)
+		JACOB_G = GET_JACOBIAN_MATRIX(INV_PHYPT_G, IGA_PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, EGM_PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), EGM_PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(INV_PHYPT_G, LC_NDX_I(1), LC_NDX_I(2), IGA_PATCH)
+		EXBD(I) = EX_DISP(GSPT, EGM_PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)
+	
+! 	CALL GAULEG(0.5D0, 1.D0, GSY, GSYW, NUMGSPT)
+! 	DO I=1,NUMGSPT
+! 		GSPT = POINT2D(0.D0, GSY(I))
+! 		PHYPT_F = GET_PHY_PT(GSPT, EGM_PATCH)
+! 		INV_PHYPT_G = GET_REF_PT(PHYPT_F, IGA_PATCH)
+! 		JACOB_F = GET_JACOBIAN_MATRIX(GSPT, EGM_PATCH)
+! 		JACOB_G = GET_JACOBIAN_MATRIX(INV_PHYPT_G, IGA_PATCH)
+! 		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+! 		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+! 		BD_WEIGHT(I) = DET_M*GSYW(I)
+! 		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), EGM_PATCH)
+! 		BD_SF(2,I) = GET_PHY_BASIS(INV_PHYPT_G, LC_NDX_I(1), LC_NDX_I(2), IGA_PATCH)
+! 		EXBD(I) = EX_DISP(GSPT, PATCH)
+! 	ENDDO
+! 	BD_INT(2) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+! 	BD_INT(3) = BD_INT(3) + DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)
+! 	
+! 	PRINT*, ''
+! 	PRINT*, '-----------(1,17)---------------'
+! 	PRINT*, ''
+! 	PRINT*, BD_INT(1:2)
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(JJ)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',JJ,') - ', DABS(SUB_F(JJ)%Y - BD_INT(3))
+		PRINT*, SUB_F(JJ)%Y, BD_INT(3)
+	ENDIF
+	PRINT*, ''
+	
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	!------------------------------------!
+	! (1) SUB_K (1,18)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	IGA_PATCH = 1
+	EGM_PATCH = 4
+	LC_NDX_I = (/0, 0/)
+	LC_NDX_J = (/9, 0/)
+	II = 1; JJ = 18
+	GAMMA_HAT = 'R'
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 0.5D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(1.D0, GSY(I))
+		PHYPT_F = GET_PHY_PT(GSPT, EGM_PATCH)
+		INV_PHYPT_G = GET_REF_PT(PHYPT_F, IGA_PATCH)
+		JACOB_F = GET_JACOBIAN_MATRIX(GSPT, EGM_PATCH)
+		JACOB_G = GET_JACOBIAN_MATRIX(INV_PHYPT_G, IGA_PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, EGM_PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), EGM_PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(INV_PHYPT_G, LC_NDX_I(1), LC_NDX_I(2), IGA_PATCH)
+		EXBD(I) = EX_DISP(GSPT, EGM_PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)
+	
+! 	CALL GAULEG(0.5D0, 1.D0, GSY, GSYW, NUMGSPT)
+! 	DO I=1,NUMGSPT
+! 		GSPT = POINT2D(1.D0, GSY(I))
+! 		PHYPT_F = GET_PHY_PT(GSPT, EGM_PATCH)
+! 		INV_PHYPT_G = GET_REF_PT(PHYPT_F, IGA_PATCH)
+! 		JACOB_F = GET_JACOBIAN_MATRIX(GSPT, EGM_PATCH)
+! 		JACOB_G = GET_JACOBIAN_MATRIX(INV_PHYPT_G, IGA_PATCH)
+! 		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+! 		DET_M = GET_DET_DR(GSPT, EGM_PATCH, GAMMA_HAT)
+! 		BD_WEIGHT(I) = DET_M*GSYW(I)
+! 		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), EGM_PATCH)
+! 		BD_SF(2,I) = GET_PHY_BASIS(INV_PHYPT_G, LC_NDX_I(1), LC_NDX_I(2), IGA_PATCH)
+! 		EXBD(I) = EX_DISP(GSPT, PATCH)
+! 	ENDDO
+! 	BD_INT(2) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+! 	BD_INT(3) = BD_INT(3) + DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)
+	
+	
+! 	PRINT*, ''
+! 	PRINT*, '-----------(1,18)---------------'
+! 	PRINT*, ''
+! 	PRINT*, BD_INT(1:2)
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(JJ)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',JJ,') - ', DABS(SUB_F(JJ)%Y - BD_INT(3))
+		PRINT*, SUB_F(JJ)%Y, BD_INT(3)
+	ENDIF
+	PRINT*, ''
+	
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	!------------------------------------!
+	! (1) SUB_K (1,2), SUB_F(2)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	PATCH = 1
+	LC_NDX_I = (/0, 0/)
+	LC_NDX_J = (/1, 0/)
+	II = 1; JJ = 2
+	GAMMA_HAT = 'B'
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 1.D0, GSX, GSXW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(GSX(I), 0.D0)
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSXW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(JJ)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',JJ,') - ', DABS(SUB_F(JJ)%Y - BD_INT(3))
+		PRINT*, SUB_F(JJ)%Y, BD_INT(3)
+	ENDIF
+	
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	!------------------------------------!
+	! (1) SUB_K (1,14)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	PATCH = 3
+	LC_NDX_I = (/2, 2/)
+	LC_NDX_J = (/2, 0/)
+	II = 1; JJ = 14
+	GAMMA_HAT = 'R'
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 1.D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(1.D0, GSY(I))
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+! 	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+! 	IF (DABS(SUB_F(II)%Y - BD_INT(3)).GT.EPS) THEN
+! 		PRINT*, 'FOUND BUG! - ', 'SUB_F(',II,') - ', DABS(SUB_F(II)%Y - BD_INT(3))
+! 		PRINT*, SUB_F(II)%Y, BD_INT(3)
+! 	ENDIF
+	
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	!------------------------------------!
+	! (1) SUB_K (5,5), SUB_F(5)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	PATCH = 1
+	LC_NDX_I = (/0, 2/)
+	LC_NDX_J = (/0, 2/)
+	II = 5; JJ = 5
+	GAMMA_HAT = 'T'
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 1.D0, GSX, GSXW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(GSX(I), 1.D0)
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSXW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+! 	PRINT*, 'SUB_F(1)%X - 1', BD_INT(3)
+	!------------------------------------!
+	PATCH = 2
+	LC_NDX_I = (/2, 2/)
+	LC_NDX_J = (/2, 2/)
+	II = 5; JJ = 5
+	GAMMA_HAT = 'T'
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 1.D0, GSX, GSXW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(GSX(I), 1.D0)
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSXW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+	BD_INT(2) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = BD_INT(3) + DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+! 	PRINT*, 'SUB_F(1)%X - 2', DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, BD_INT(1), BD_INT(2)
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(JJ)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',JJ,') - ', DABS(SUB_F(JJ)%Y - BD_INT(3))
+		PRINT*, SUB_F(JJ)%Y, BD_INT(3)
+	ENDIF
+	
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	!------------------------------------!
+	! (1) SUB_K (5,11), SUB_F(11)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	PATCH = 2
+	LC_NDX_I = (/2, 2/)
+	LC_NDX_J = (/1, 2/)
+	II = 5; JJ = 11
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 1.D0, GSX, GSXW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(GSX(I), 1.D0)
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSXW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(JJ)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',JJ,') - ', DABS(SUB_F(JJ)%Y - BD_INT(3))
+		PRINT*, SUB_F(JJ)%Y, BD_INT(3)
+	ENDIF
+	
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	!------------------------------------!
+	! (1) SUB_K (8,8), SUB_F(8)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	PATCH = 2
+	LC_NDX_I = (/0, 0/)
+	LC_NDX_J = (/0, 0/)
+	II = 8; JJ = 8
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 1.D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(0.D0, GSY(I))
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+! 	PRINT*, 'SUB_F(8)%X - 1', BD_INT(3)
+	!------------------------------------!
+	PATCH = 3
+	LC_NDX_I = (/0, 2/)
+	LC_NDX_J = (/0, 2/)
+	II = 8; JJ = 8
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 1.D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(0.D0, GSY(I))
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+	BD_INT(2) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = BD_INT(3) + DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+! 	PRINT*, 'SUB_F(8)%X - 2', DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, BD_INT(1), BD_INT(2)
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(JJ)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',JJ,') - ', DABS(SUB_F(JJ)%Y - BD_INT(3))
+		PRINT*, SUB_F(JJ)%Y, BD_INT(3)
+	ENDIF
+	
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	!------------------------------------!
+	! (1) SUB_K (8,12), SUB_F(12)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	PATCH = 3
+	LC_NDX_I = (/0, 2/)
+	LC_NDX_J = (/0, 0/)
+	II = 8; JJ = 12
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 1.D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(0.D0, GSY(I))
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+	!------------------------------------!
+	! SUB_F(12)
+	PATCH = 3
+	LC_NDX_J = (/0, 0/)
+	II = 8; JJ = 12
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 1.D0, GSX, GSXW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(GSX(I), 0.D0)
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSXW(I)
+! 		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+! 	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = BD_INT(3) + DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, BD_INT(1), BD_INT(2)
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(JJ)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',JJ,') - ', DABS(SUB_F(JJ)%Y - BD_INT(3))
+		PRINT*, SUB_F(JJ)%Y, BD_INT(3)
+	ENDIF
+	
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	!------------------------------------!
+	! (1) SUB_K (16,23), SUB_F(23)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	IGA_PATCH = 3
+	EGM_PATCH = 4
+	LC_NDX_I = (/2, 1/)
+	LC_NDX_J = (/0, 3/)
+	II = 16; JJ = 23
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 0.5D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(0.D0, GSY(I))
+		PHYPT_F = GET_PHY_PT(GSPT, EGM_PATCH)
+		INV_PHYPT_G = GET_REF_PT(PHYPT_F, IGA_PATCH)
+		JACOB_F = GET_JACOBIAN_MATRIX(GSPT, EGM_PATCH)
+		JACOB_G = GET_JACOBIAN_MATRIX(INV_PHYPT_G, IGA_PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, EGM_PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), EGM_PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(INV_PHYPT_G, LC_NDX_I(1), LC_NDX_I(2), IGA_PATCH)
+		EXBD(I) = EX_DISP(GSPT, EGM_PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)
+	
+	CALL GAULEG(0.5D0, 1.D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(0.D0, GSY(I))
+		PHYPT_F = GET_PHY_PT(GSPT, EGM_PATCH)
+		INV_PHYPT_G = GET_REF_PT(PHYPT_F, IGA_PATCH)
+		JACOB_F = GET_JACOBIAN_MATRIX(GSPT, EGM_PATCH)
+		JACOB_G = GET_JACOBIAN_MATRIX(INV_PHYPT_G, IGA_PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, EGM_PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), EGM_PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(INV_PHYPT_G, LC_NDX_I(1), LC_NDX_I(2), IGA_PATCH)
+		EXBD(I) = EX_DISP(GSPT, EGM_PATCH)
+	ENDDO
+	BD_INT(2) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = BD_INT(3) + DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)
+	
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(JJ)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',JJ,') - ', DABS(SUB_F(JJ)%Y - BD_INT(3))
+		PRINT*, SUB_F(JJ)%Y, BD_INT(3)
+	ENDIF
+	
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	!------------------------------------!
+	! (1) SUB_K (1,24), SUB_F(24)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	IGA_PATCH = 1
+	EGM_PATCH = 4
+	LC_NDX_I = (/0, 0/)
+	LC_NDX_J = (/9, 3/)
+	II = 1; JJ = 24
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 0.5D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(1.D0, GSY(I))
+		PHYPT_F = GET_PHY_PT(GSPT, EGM_PATCH)
+		INV_PHYPT_G = GET_REF_PT(PHYPT_F, IGA_PATCH)
+		JACOB_F = GET_JACOBIAN_MATRIX(GSPT, EGM_PATCH)
+		JACOB_G = GET_JACOBIAN_MATRIX(INV_PHYPT_G, IGA_PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, EGM_PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), EGM_PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(INV_PHYPT_G, LC_NDX_I(1), LC_NDX_I(2), IGA_PATCH)
+		EXBD(I) = EX_DISP(GSPT, EGM_PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)
+	
+	CALL GAULEG(0.5D0, 1.D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(1.D0, GSY(I))
+		PHYPT_F = GET_PHY_PT(GSPT, EGM_PATCH)
+		INV_PHYPT_G = GET_REF_PT(PHYPT_F, IGA_PATCH)
+		JACOB_F = GET_JACOBIAN_MATRIX(GSPT, EGM_PATCH)
+		JACOB_G = GET_JACOBIAN_MATRIX(INV_PHYPT_G, IGA_PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, EGM_PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), EGM_PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(INV_PHYPT_G, LC_NDX_I(1), LC_NDX_I(2), IGA_PATCH)
+		EXBD(I) = EX_DISP(GSPT, EGM_PATCH)
+	ENDDO
+	BD_INT(2) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = BD_INT(3) + DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)
+	
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(JJ)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',JJ,') - ', DABS(SUB_F(JJ)%Y - BD_INT(3))
+		PRINT*, SUB_F(JJ)%Y, BD_INT(3)
+	ENDIF
+	
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	!------------------------------------!
+	! (1) SUB_K (1,20), SUB_F(20)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	IGA_PATCH = 1
+	EGM_PATCH = 4
+	LC_NDX_I = (/0, 0/)
+	LC_NDX_J = (/9, 1/)
+	II = 1; JJ = 20
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 0.5D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(1.D0, GSY(I))
+		PHYPT_F = GET_PHY_PT(GSPT, EGM_PATCH)
+		INV_PHYPT_G = GET_REF_PT(PHYPT_F, IGA_PATCH)
+		JACOB_F = GET_JACOBIAN_MATRIX(GSPT, EGM_PATCH)
+		JACOB_G = GET_JACOBIAN_MATRIX(INV_PHYPT_G, IGA_PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, EGM_PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), EGM_PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(INV_PHYPT_G, LC_NDX_I(1), LC_NDX_I(2), IGA_PATCH)
+		EXBD(I) = EX_DISP(GSPT, EGM_PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(JJ)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',JJ,') - ', DABS(SUB_F(JJ)%Y - BD_INT(3))
+		PRINT*, SUB_F(JJ)%Y, BD_INT(3)
+	ENDIF
+	
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+
+	!------------------------------------!
+	! (1) SUB_K (1,22), SUB_F(22)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	IGA_PATCH = 1
+	EGM_PATCH = 4
+	LC_NDX_I = (/0, 0/)
+	LC_NDX_J = (/9, 2/)
+	II = 1; JJ = 22
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 0.5D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(1.D0, GSY(I))
+		PHYPT_F = GET_PHY_PT(GSPT, EGM_PATCH)
+		INV_PHYPT_G = GET_REF_PT(PHYPT_F, IGA_PATCH)
+		JACOB_F = GET_JACOBIAN_MATRIX(GSPT, EGM_PATCH)
+		JACOB_G = GET_JACOBIAN_MATRIX(INV_PHYPT_G, IGA_PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, EGM_PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), EGM_PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(INV_PHYPT_G, LC_NDX_I(1), LC_NDX_I(2), IGA_PATCH)
+		EXBD(I) = EX_DISP(GSPT, EGM_PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(JJ)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',JJ,') - ', DABS(SUB_F(JJ)%Y - BD_INT(3))
+		PRINT*, SUB_F(JJ)%Y, BD_INT(3)
+	ENDIF
+	
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	!------------------------------------!
+	! (1) SUB_K (1,19), SUB_F(19)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	IGA_PATCH = 3
+	EGM_PATCH = 4
+	LC_NDX_I = (/2, 2/)
+	LC_NDX_J = (/0, 1/)
+	II = 1; JJ = 19
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 0.5D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(0.D0, GSY(I))
+		PHYPT_F = GET_PHY_PT(GSPT, EGM_PATCH)
+		INV_PHYPT_G = GET_REF_PT(PHYPT_F, IGA_PATCH)
+		JACOB_F = GET_JACOBIAN_MATRIX(GSPT, EGM_PATCH)
+		JACOB_G = GET_JACOBIAN_MATRIX(INV_PHYPT_G, IGA_PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, EGM_PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), EGM_PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(INV_PHYPT_G, LC_NDX_I(1), LC_NDX_I(2), IGA_PATCH)
+		EXBD(I) = EX_DISP(GSPT, EGM_PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(JJ)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',JJ,') - ', DABS(SUB_F(JJ)%Y - BD_INT(3))
+		PRINT*, SUB_F(JJ)%Y, BD_INT(3)
+	ENDIF
+	
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	!------------------------------------!
+	! (1) SUB_K (1,21), SUB_F(21)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	IGA_PATCH = 3
+	EGM_PATCH = 4
+	LC_NDX_I = (/2, 2/)
+	LC_NDX_J = (/0, 2/)
+	II = 1; JJ = 21
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 0.5D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(0.D0, GSY(I))
+		PHYPT_F = GET_PHY_PT(GSPT, EGM_PATCH)
+		INV_PHYPT_G = GET_REF_PT(PHYPT_F, IGA_PATCH)
+		JACOB_F = GET_JACOBIAN_MATRIX(GSPT, EGM_PATCH)
+		JACOB_G = GET_JACOBIAN_MATRIX(INV_PHYPT_G, IGA_PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, EGM_PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), EGM_PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(INV_PHYPT_G, LC_NDX_I(1), LC_NDX_I(2), IGA_PATCH)
+		EXBD(I) = EX_DISP(GSPT, EGM_PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(JJ)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',JJ,') - ', DABS(SUB_F(JJ)%Y - BD_INT(3))
+		PRINT*, SUB_F(JJ)%Y, BD_INT(3)
+	ENDIF
+	
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	!------------------------------------!
+	! (1) SUB_K (1,23), SUB_F(23)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	IGA_PATCH = 3
+	EGM_PATCH = 4
+	LC_NDX_I = (/2, 2/)
+	LC_NDX_J = (/0, 3/)
+	II = 1; JJ = 23
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 0.5D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(0.D0, GSY(I))
+		PHYPT_F = GET_PHY_PT(GSPT, EGM_PATCH)
+		INV_PHYPT_G = GET_REF_PT(PHYPT_F, IGA_PATCH)
+		JACOB_F = GET_JACOBIAN_MATRIX(GSPT, EGM_PATCH)
+		JACOB_G = GET_JACOBIAN_MATRIX(INV_PHYPT_G, IGA_PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, EGM_PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), EGM_PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(INV_PHYPT_G, LC_NDX_I(1), LC_NDX_I(2), IGA_PATCH)
+		EXBD(I) = EX_DISP(GSPT, EGM_PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+	CALL GAULEG(0.5D0, 1.D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(0.D0, GSY(I))
+		PHYPT_F = GET_PHY_PT(GSPT, EGM_PATCH)
+		INV_PHYPT_G = GET_REF_PT(PHYPT_F, IGA_PATCH)
+		JACOB_F = GET_JACOBIAN_MATRIX(GSPT, EGM_PATCH)
+		JACOB_G = GET_JACOBIAN_MATRIX(INV_PHYPT_G, IGA_PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, EGM_PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), EGM_PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(INV_PHYPT_G, LC_NDX_I(1), LC_NDX_I(2), IGA_PATCH)
+		EXBD(I) = EX_DISP(GSPT, EGM_PATCH)
+	ENDDO
+	BD_INT(2) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = BD_INT(3) + DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(JJ)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',JJ,') - ', DABS(SUB_F(JJ)%Y - BD_INT(3))
+		PRINT*, SUB_F(JJ)%Y, BD_INT(3)
+	ENDIF
+	
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	!------------------------------------!
+	! (1) SUB_K (1,16), SUB_F(16)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	PATCH = 3
+	LC_NDX_I = (/2, 2/)
+	LC_NDX_J = (/2, 1/)
+	II = 1; JJ = 16
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 1.D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(1.D0, GSY(I))
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+	BD_INT(2) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = BD_INT(3) + DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+! 	PRINT*, 'SUB_F(8)%X - 2', DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, BD_INT(1), BD_INT(2)
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(JJ)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',JJ,') - ', DABS(SUB_F(JJ)%Y - BD_INT(3))
+		PRINT*, SUB_F(JJ)%Y, BD_INT(3)
+	ENDIF
+	
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	!------------------------------------!
+	! (1) SUB_K (1,3), SUB_F(3)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	PATCH = 1
+	LC_NDX_I = (/0, 0/)
+	LC_NDX_J = (/2, 0/)
+	II = 1; JJ = 3
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 1.D0, GSX, GSXW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(GSX(I), 0.D0)
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSXW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+	BD_INT(2) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = BD_INT(3) + DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+! 	PRINT*, 'SUB_F(8)%X - 2', DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, BD_INT(1), BD_INT(2)
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+! 	IF (DABS(SUB_F(JJ)%Y - BD_INT(3)).GT.EPS) THEN
+! 		PRINT*, 'FOUND BUG! - ', 'SUB_F(',JJ,') - ', DABS(SUB_F(JJ)%Y - BD_INT(3))
+! 		PRINT*, SUB_F(JJ)%Y, BD_INT(3)
+! 	ENDIF
+	
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+	
+	IF (DABS(SUB_K(21,8)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(21,8)'
+		PRINT*, SUB_K(21,8), 0.D0
+	ENDIF
+
+	!------------------------------------!
+	! (1) SUB_K (1,1), SUB_F(1)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	PATCH = 1
+	LC_NDX_I = (/0, 0/)
+	LC_NDX_J = (/0, 0/)
+	II = 1; JJ = 1
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 1.D0, GSX, GSXW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(GSX(I), 0.D0)
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSXW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+! 	PRINT*, 'SUB_F(1)%X - 1', BD_INT(3)
+	!------------------------------------!
+	PATCH = 3
+	LC_NDX_I = (/NUMBS(3,1)-1, NUMBS(3,1)-1/)
+	LC_NDX_J = (/NUMBS(3,1)-1, NUMBS(3,2)-1/)
+	II = 1; JJ = 1
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 1.D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(1.D0, GSY(I))
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		BD_SF(2,I) = GET_PHY_BASIS(GSPT, LC_NDX_J(1), LC_NDX_J(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+	BD_INT(2) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(2,:)%D00)
+	BD_INT(3) = BD_INT(3) + DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+! 	PRINT*, 'SUB_F(1)%X - 2', DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(2,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+! 	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, BD_INT(1), BD_INT(2)
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+! 	ENDIF
+	
+! 	IF (DABS(SUB_F(II)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',II,') - ', DABS(SUB_F(II)%Y - BD_INT(3))
+		PRINT*, SUB_F(II)%Y, BD_INT(3)
+! 	ENDIF
+
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+
+	!------------------------------------!
+	! (1) SUB_K (19,19), SUB_F(19)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	PATCH = 4
+	LC_NDX_I = (/0, 1/)
+	II = 19; JJ = 19
+	!------------------------------------!
+
+	CALL GAULEG(0.D0, 0.5D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(0.D0, GSY(I))
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(1,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(II)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',II,') - ', DABS(SUB_F(II)%Y - BD_INT(3))
+		PRINT*, SUB_F(II)%Y, BD_INT(3)
+	ENDIF
+
+	!!----------------------------------------------------------------------------------------------------------------------------------------!!
+
+	!------------------------------------!
+	! (1) SUB_K (16,16), SUB_F(16)
+	BD_INT(:) = 0.D0
+	BD_SF(:,:) = FVALUE(0.D0,0.D0,0.D0,0.D0,0.D0,0.D0)
+	PATCH = 3
+	LC_NDX_I = (/2, 1/)
+	II = 16; JJ = 16
+	!------------------------------------!
+	
+	CALL GAULEG(0.D0, 1.D0, GSY, GSYW, NUMGSPT)
+	DO I=1,NUMGSPT
+		GSPT = POINT2D(1.D0, GSY(I))
+		JACOB = GET_JACOBIAN_MATRIX(GSPT,PATCH)
+		GAMMA_HAT = GET_GAMMA_HAT(GSPT)
+		DET_M = GET_DET_DR(GSPT, PATCH, GAMMA_HAT)
+		BD_WEIGHT(I) = DET_M*GSYW(I)
+		BD_SF(1,I) = GET_PHY_BASIS(GSPT, LC_NDX_I(1), LC_NDX_I(2), PATCH)
+		EXBD(I) = EX_DISP(GSPT, PATCH)
+	ENDDO
+	BD_INT(1) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), BD_SF(1,:)%D00)
+	BD_INT(3) = DOT_PRODUCT(PRODUCT(RESHAPE((/BD_SF(1,:)%D00, BD_WEIGHT(:)/), (/NUMGSPT, 2/), ORDER=ORDER1), 2), EXBD(:)%Y)	
+	
+	IF (DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2))).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_K(',II,',',JJ,') - ', DABS(SUB_K(II,JJ) - (BD_INT(1) + BD_INT(2)))
+		PRINT*, SUB_K(II,JJ), (BD_INT(1) + BD_INT(2))
+	ENDIF
+	
+	IF (DABS(SUB_F(II)%Y - BD_INT(3)).GT.EPS) THEN
+		PRINT*, 'FOUND BUG! - ', 'SUB_F(',II,') - ', DABS(SUB_F(II)%Y - BD_INT(3))
+		PRINT*, SUB_F(II)%Y, BD_INT(3)
+	ENDIF
+
+END SUBROUTINE DR_BUGKILLER
+
+END MODULE BOUNDARY
+!------------------------------------!
